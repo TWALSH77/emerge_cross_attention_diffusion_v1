@@ -15,11 +15,11 @@ class PositionalEncoding(nn.Module):
         )
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        self.register_buffer('pe', pe.unsqueeze(0))  # => [1, max_len, d_model]
+        self.register_buffer('pe', pe.unsqueeze(0))  # [1, max_len, d_model]
 
     def forward(self, x):
         """
-        x: [B, S, d_model]
+        x: [B, S, d_model] 
         """
         seq_len = x.size(1)
         return x + self.pe[:, :seq_len, :]
@@ -42,8 +42,8 @@ class DiffusionTimeEmbedding(nn.Module):
             -math.log(10000) *
             torch.arange(0, half_dim, dtype=torch.float, device=t.device) / half_dim
         )
-        t = t.unsqueeze(-1).float()  # => [B, 1]
-        sinusoidal_inp = t * freqs.unsqueeze(0)  # => [B, half_dim]
+        t = t.unsqueeze(-1).float()  # [B, 1]
+        sinusoidal_inp = t * freqs.unsqueeze(0)  # [B, half_dim]
 
         sin_emb = torch.sin(sinusoidal_inp)
         cos_emb = torch.cos(sinusoidal_inp)
@@ -58,23 +58,23 @@ class CrossAttentionDenoiser(nn.Module):
     def __init__(self, num_tokens: int, d_model: int = 768, n_heads: int = 8):
         super().__init__()
         self.d_model = d_model
-        # Discrete token embedding
+        # dscrete token embedding
         self.token_embed = nn.Embedding(num_tokens, d_model)
 
-        # Positional encoding
+        # pos encoding
         self.pos_encoding = PositionalEncoding(d_model)
 
-        # Time embedding
+        # time embedding
         self.time_embed = DiffusionTimeEmbedding(d_model)
 
-        # Cross-attention
+        # cross-attention
         self.cross_attn = nn.MultiheadAttention(
             embed_dim=d_model,
             num_heads=n_heads,
             batch_first=True
         )
 
-        # Final MLP
+        # final MLP ! woo
         self.mlp = nn.Sequential(
             nn.Linear(d_model * 2, d_model),
             nn.ReLU(),
@@ -89,29 +89,29 @@ class CrossAttentionDenoiser(nn.Module):
         """
         B, S = x_tokens.shape
 
-        # 1) tokens -> embedding
+        #  tokens -> embedding
         token_emb = self.token_embed(x_tokens)  # => [B, S, d_model]
 
-        # 2) positional encoding
+        # pos encoding
         token_emb = self.pos_encoding(token_emb)
 
-        # 3) time embedding
+        # time step embedding -> allows model to learn timesteps for  denoising
         t_emb = self.time_embed(t)  # => [B, d_model]
         t_emb_expanded = t_emb.unsqueeze(1).expand(-1, S, -1)
 
-        # 4) upsample MERT
+        # upsample MERT 
         mert_trans = mert_emb.permute(0, 2, 1)  # => [B, d_model, T_mert]
         S_out = S  # target length
         mert_upsampled = F.interpolate(mert_trans, size=S_out, mode='linear', align_corners=False)
         mert_upsampled = mert_upsampled.permute(0, 2, 1)  # => [B, S, d_model]
 
-        # 5) cross-attention: Q=token_emb, K=V=mert_upsampled
+        # 5) cross-attn Q=token_emb, K=V=mert_upsampled
         attn_out, _ = self.cross_attn(query=token_emb, key=mert_upsampled, value=mert_upsampled)
         x_attn = token_emb + attn_out
 
-        # 6) concat time embedding
+        # concat time embedding
         denoise_input = torch.cat([x_attn, t_emb_expanded], dim=-1)
 
-        # 7) final MLP
+        # again final MLP -> mate i'm not sure if this is all right LOL 
         predicted_noise = self.mlp(denoise_input)
         return predicted_noise

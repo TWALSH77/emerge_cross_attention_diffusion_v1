@@ -1,0 +1,11 @@
+pip install pip==23.2.1
+pip install datasets transformers  tqdm soundfile
+
+pip install encodec==0.1.1 fairseq==0.12.2 librosa
+
+pip install omegaconf==2.0.5 hydra-core==1.0.7
+
+git clone https://github.com/facebookresearch/fairseq.git
+%cd fairseq
+!pip install --editable .
+%cd ..

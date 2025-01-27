@@ -7,8 +7,8 @@ from torch.utils.data import Dataset
 
 class SimpleAudioDataset(Dataset):
     """
-    Loads .wav from a directory, resamples to config['sample_rate'],
-    then pads/clips to config['clip_seconds'] seconds.
+    Loads .wav files from a directory, resamples them to sample_rate,
+    pads/clips to clip_seconds, and returns a single mono waveform.
     """
     def __init__(self,
                  audio_dir,
@@ -39,14 +39,14 @@ class SimpleAudioDataset(Dataset):
         if sr != self.sample_rate:
             wav = torchaudio.functional.resample(wav, sr, self.sample_rate)
 
-        # Convert stereo -> mono if needed
+        # Stereo -> mono
         if wav.shape[0] > 1:
             wav = torch.mean(wav, dim=0, keepdim=True)
 
-        # shape => [n_samples]
+        # Squeeze out channel dimension
         wav = wav.squeeze(0)
 
-        # Pad or clip to clip_seconds
+        # Pad or clip to exact length
         n_samples = wav.shape[0]
         if n_samples < self.clip_samples:
             pad_size = self.clip_samples - n_samples
