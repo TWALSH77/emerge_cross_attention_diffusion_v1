@@ -1,0 +1,7 @@
+run arg command 
+
+python inference.py \ --audio_path “/Users/tedwalsh/Desktop/emergesound.ai/experiments/D_JEPA/codebase_v1/inference/inferenceaudio/toomuch.wav” \ 
+--denoiser_path "/Users/tedwalsh/Desktop/emergesound.ai/experiments/D_JEPA/codebase_v1/models/cross_attention_denoiser_best.pth" \ 
+--output_dir "/Users/tedwalsh/Desktop/emergesound.ai/experiments/D_JEPA/codebase_v1/generatedaudio"
+
+change with own paths 
